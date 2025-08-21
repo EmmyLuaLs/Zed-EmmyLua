@@ -1,0 +1,117 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build Extension
+    runs-on: ubuntu-latest
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: nightly
+        targets: wasm32-wasi
+
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-registry-
+
+    - name: Cache cargo index
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-index-
+
+    - name: Cache target directory
+      uses: actions/cache@v3
+      with:
+        path: target
+        key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-target-
+
+    - name: Build extension
+      run: cargo build --release --target wasm32-wasi
+
+    - name: Prepare artifact
+      run: |
+        mkdir -p dist
+        cp target/wasm32-wasi/release/emmylua.wasm dist/
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: emmylua-extension
+        path: dist/emmylua.wasm
+
+  test:
+    name: Test Extension
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: nightly
+        targets: wasm32-wasi
+
+    - name: Run tests
+      run: cargo test
+
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+
+    - name: Run clippy
+      run: cargo clippy -- -D warnings
+
+  validate:
+    name: Validate Extension
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: emmylua-extension
+        path: dist/
+
+    - name: Validate extension structure
+      run: |
+        echo "Checking required files..."
+        ls -la
+        test -f extension.toml || (echo "extension.toml not found" && exit 1)
+        test -f dist/emmylua.wasm || (echo "emmylua.wasm not found" && exit 1)
+        test -d languages/emmylua || (echo "languages/emmylua directory not found" && exit 1)
+        test -f languages/emmylua/config.toml || (echo "languages/emmylua/config.toml not found" && exit 1)
+        echo "All required files found!"
+
+    - name: Check extension.toml syntax
+      run: |
+        if command -v toml &> /dev/null; then
+          toml check extension.toml
+        else
+          echo "TOML checker not available, skipping syntax check"
+        fi

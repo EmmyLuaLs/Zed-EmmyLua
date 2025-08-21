@@ -28,7 +28,7 @@ impl EmmyLuaExtension {
             &zed::LanguageServerInstallationStatus::CheckingForUpdate,
         );
         let release = zed::latest_github_release(
-            "CppCXY/emmylua-analyzer-rust",
+            "EmmyLuaLs/emmylua-analyzer-rust",
             zed::GithubReleaseOptions {
                 require_assets: true,
                 pre_release: false,
@@ -37,16 +37,23 @@ impl EmmyLuaExtension {
 
         let (platform, arch) = zed::current_platform();
         let asset_name = format!(
-            "emmylua_ls-{os}-{arch}.{extension}",
+            "emmylua_ls-{os}-{arch}{glibc}.{extension}",
             os = match platform {
                 zed::Os::Mac => "darwin",
                 zed::Os::Linux => "linux",
                 zed::Os::Windows => "win32",
             },
             arch = match arch {
-                zed::Architecture::Aarch64 => "arm64",
+                zed::Architecture::Aarch64 => match platform {
+                    zed::Os::Linux => "aarch64",
+                    zed::Os::Windows | zed::Os::Mac => "arm64",
+                },
                 zed::Architecture::X8664 => "x64",
                 zed::Architecture::X86 => return Err("unsupported platform x86".into()),
+            },
+            glibc = match platform {
+                zed::Os::Linux => "-glibc.2.17",
+                zed::Os::Windows | zed::Os::Mac => "",
             },
             extension = match platform {
                 zed::Os::Mac | zed::Os::Linux => "tar.gz",
