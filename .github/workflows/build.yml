@@ -18,8 +18,7 @@ jobs:
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: nightly
-        targets: wasm32-wasi
+        targets: wasm32-wasip2
 
     - name: Cache cargo registry
       uses: actions/cache@v3

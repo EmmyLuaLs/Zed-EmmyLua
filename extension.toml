@@ -4,7 +4,7 @@ description = "EmmyLua support."
 version = "0.0.1"
 schema_version = 1
 authors = ["0x2CA <2478557459@qq.com>"]
-repository = "https://github.com/CppCXY/Zed-EmmyLua"
+repository = "https://github.com/EmmyLuaLs/Zed-EmmyLua"
 
 [language_servers.emmylua]
 name = "EmmyLua"
