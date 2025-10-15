@@ -1,4 +1,26 @@
+# Rust/Cargo
 **/target/
 **/Cargo.lock
 **/*.wasm
+
+# Grammars (should be generated)
 grammars/
+
+# Development
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.log
+
+# Build artifacts
+dist/
+*.dll
+*.so
+*.dylib
+
+# Test files
+test_*.lua
+scratch/

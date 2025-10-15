@@ -1,15 +1,15 @@
 id = "emmylua"
 name = "EmmyLua"
-description = "EmmyLua support."
-version = "0.0.1"
+description = "Advanced Lua language support with EmmyLua annotations, intelligent completions, and powerful diagnostics."
+version = "0.15.0"
 schema_version = 1
-authors = ["0x2CA <2478557459@qq.com>"]
+authors = ["0x2CA <2478557459@qq.com>", "CppCXY"]
 repository = "https://github.com/EmmyLuaLs/Zed-EmmyLua"
 
 [language_servers.emmylua]
-name = "EmmyLua"
+name = "EmmyLua Language Server"
 languages = ["EmmyLua", "Lua"]
 
 [grammars.lua]
 repository = "https://github.com/tree-sitter-grammars/tree-sitter-lua"
-commit = "a24dab177e58c9c6832f96b9a73102a0cfbced4a"
+commit = "d76023017f7485eae629cb60d406c7a1ca0f40c9"

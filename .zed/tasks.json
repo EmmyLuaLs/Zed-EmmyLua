@@ -1,0 +1,35 @@
+[
+  {
+    "label": "Run Current Lua File",
+    "command": "lua",
+    "args": ["${file}"],
+    "use_new_terminal": true,
+    "reveal": "always"
+  },
+  {
+    "label": "Run with LuaJIT",
+    "command": "luajit",
+    "args": ["${file}"],
+    "use_new_terminal": true,
+    "reveal": "always"
+  },
+  {
+    "label": "Check Lua Syntax",
+    "command": "luac",
+    "args": ["-p", "${file}"],
+    "reveal": "always"
+  },
+  {
+    "label": "Run Lua Tests",
+    "command": "lua",
+    "args": ["tests/run_tests.lua"],
+    "reveal": "always"
+  },
+  {
+    "label": "Lua REPL",
+    "command": "lua",
+    "args": [],
+    "use_new_terminal": true,
+    "reveal": "always"
+  }
+]

@@ -13,10 +13,16 @@ impl EmmyLuaExtension {
         language_server_id: &LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<String> {
+        // First check if emmylua is in PATH
+        if let Some(path) = worktree.which("emmylua_ls") {
+            return Ok(path);
+        }
+
         if let Some(path) = worktree.which("emmylua") {
             return Ok(path);
         }
 
+        // Check cached path
         if let Some(path) = &self.cached_binary_path {
             if fs::metadata(path).map_or(false, |stat| stat.is_file()) {
                 return Ok(path.clone());
@@ -27,6 +33,7 @@ impl EmmyLuaExtension {
             language_server_id,
             &zed::LanguageServerInstallationStatus::CheckingForUpdate,
         );
+        
         let release = zed::latest_github_release(
             "EmmyLuaLs/emmylua-analyzer-rust",
             zed::GithubReleaseOptions {
@@ -131,21 +138,55 @@ impl zed::Extension for EmmyLuaExtension {
         _language_server_id: &LanguageServerId,
         completion: zed::lsp::Completion,
     ) -> Option<CodeLabel> {
+        let name = &completion.label;
+        
         match completion.kind? {
             CompletionKind::Method | CompletionKind::Function => {
-                let name_len = completion.label.find('(').unwrap_or(completion.label.len());
+                let name_len = name.find('(').unwrap_or(name.len());
                 Some(CodeLabel {
-                    spans: vec![CodeLabelSpan::code_range(0..completion.label.len())],
+                    spans: vec![CodeLabelSpan::code_range(0..name.len())],
                     filter_range: (0..name_len).into(),
-                    code: completion.label,
+                    code: name.clone(),
                 })
             }
-            CompletionKind::Field => Some(CodeLabel {
+            CompletionKind::Field | CompletionKind::Property => Some(CodeLabel {
                 spans: vec![CodeLabelSpan::literal(
-                    completion.label.clone(),
+                    name.clone(),
                     Some("property".into()),
                 )],
-                filter_range: (0..completion.label.len()).into(),
+                filter_range: (0..name.len()).into(),
+                code: Default::default(),
+            }),
+            CompletionKind::Variable => Some(CodeLabel {
+                spans: vec![CodeLabelSpan::literal(
+                    name.clone(),
+                    Some("variable".into()),
+                )],
+                filter_range: (0..name.len()).into(),
+                code: Default::default(),
+            }),
+            CompletionKind::Class => Some(CodeLabel {
+                spans: vec![CodeLabelSpan::literal(
+                    name.clone(),
+                    Some("type".into()),
+                )],
+                filter_range: (0..name.len()).into(),
+                code: Default::default(),
+            }),
+            CompletionKind::Module => Some(CodeLabel {
+                spans: vec![CodeLabelSpan::literal(
+                    name.clone(),
+                    Some("module".into()),
+                )],
+                filter_range: (0..name.len()).into(),
+                code: Default::default(),
+            }),
+            CompletionKind::Keyword => Some(CodeLabel {
+                spans: vec![CodeLabelSpan::literal(
+                    name.clone(),
+                    Some("keyword".into()),
+                )],
+                filter_range: (0..name.len()).into(),
                 code: Default::default(),
             }),
             _ => None,
@@ -157,19 +198,72 @@ impl zed::Extension for EmmyLuaExtension {
         _language_server_id: &LanguageServerId,
         symbol: zed::lsp::Symbol,
     ) -> Option<CodeLabel> {
-        let prefix = "let a = ";
-        let suffix = match symbol.kind {
-            zed::lsp::SymbolKind::Method => "()",
-            _ => "",
-        };
-        let code = format!("{prefix}{}{suffix}", symbol.name);
-        Some(CodeLabel {
-            spans: vec![CodeLabelSpan::code_range(
-                prefix.len()..code.len() - suffix.len(),
-            )],
-            filter_range: (0..symbol.name.len()).into(),
-            code,
-        })
+        let name = &symbol.name;
+        
+        match symbol.kind {
+            zed::lsp::SymbolKind::Method | zed::lsp::SymbolKind::Function => {
+                let code = format!("function {}()", name);
+                let start = code.find(name)?;
+                Some(CodeLabel {
+                    spans: vec![CodeLabelSpan::code_range(start..start + name.len())],
+                    filter_range: (0..name.len()).into(),
+                    code,
+                })
+            }
+            zed::lsp::SymbolKind::Class | zed::lsp::SymbolKind::Module => {
+                Some(CodeLabel {
+                    spans: vec![CodeLabelSpan::literal(
+                        name.clone(),
+                        Some("type".into()),
+                    )],
+                    filter_range: (0..name.len()).into(),
+                    code: name.clone(),
+                })
+            }
+            zed::lsp::SymbolKind::Variable | zed::lsp::SymbolKind::Constant => {
+                Some(CodeLabel {
+                    spans: vec![CodeLabelSpan::literal(
+                        name.clone(),
+                        Some("variable".into()),
+                    )],
+                    filter_range: (0..name.len()).into(),
+                    code: name.clone(),
+                })
+            }
+            _ => {
+                Some(CodeLabel {
+                    spans: vec![CodeLabelSpan::code_range(0..name.len())],
+                    filter_range: (0..name.len()).into(),
+                    code: name.clone(),
+                })
+            }
+        }
+    }
+
+    fn language_server_workspace_configuration(
+        &mut self,
+        _language_server_id: &LanguageServerId,
+        worktree: &zed::Worktree,
+    ) -> Result<Option<zed::serde_json::Value>> {
+        let settings = zed::settings::LspSettings::for_worktree("emmylua", worktree)
+            .ok()
+            .and_then(|lsp_settings| lsp_settings.settings.clone())
+            .unwrap_or_default();
+
+        Ok(Some(settings))
+    }
+
+    fn language_server_initialization_options(
+        &mut self,
+        _language_server_id: &LanguageServerId,
+        worktree: &zed::Worktree,
+    ) -> Result<Option<zed::serde_json::Value>> {
+        let settings = zed::settings::LspSettings::for_worktree("emmylua", worktree)
+            .ok()
+            .and_then(|lsp_settings| lsp_settings.initialization_options.clone())
+            .unwrap_or_default();
+
+        Ok(Some(settings))
     }
 }
 

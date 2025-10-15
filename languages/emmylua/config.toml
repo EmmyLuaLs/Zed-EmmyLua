@@ -2,6 +2,8 @@ name = "EmmyLua"
 grammar = "lua"
 path_suffixes = ["lua", "lua.txt"]
 line_comments = ["-- "]
+block_comment = ["--[[", "]]"]
+word_characters = ["_"]
 autoclose_before = ";:.,=}])>"
 brackets = [
     { start = "{", end = "}", close = true, newline = true },
@@ -13,5 +15,11 @@ brackets = [
     { start = "'", end = "'", close = true, newline = false, not_in = [
         "string",
     ] },
+    { start = "[[", end = "]]", close = true, newline = true, not_in = [
+        "string",
+    ] },
 ]
 collapsed_placeholder = "--[ ... ]--"
+
+[language_servers.emmylua]
+name = "emmylua"

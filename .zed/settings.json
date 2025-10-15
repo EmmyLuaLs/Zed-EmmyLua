@@ -1,0 +1,110 @@
+{
+  // EmmyLua Language Server Configuration
+  "lsp": {
+    "emmylua": {
+      // Initialization options sent when the language server starts
+      "initialization_options": {
+        "locale": "en-us"
+      },
+      // Runtime configuration
+      "settings": {
+        // Lua runtime version
+        "Lua.runtime.version": "Lua 5.4",
+        
+        // Runtime path for require
+        "Lua.runtime.path": [
+          "?.lua",
+          "?/init.lua"
+        ],
+        
+        // Diagnostics settings
+        "Lua.diagnostics.globals": [
+          // Add your global variables here
+          // Example: "vim" for Neovim
+        ],
+        "Lua.diagnostics.disable": [
+          // Disable specific diagnostics
+          // Example: "lowercase-global"
+        ],
+        "Lua.diagnostics.severity": {
+          // Customize diagnostic severity
+          // "undefined-global": "Warning"
+        },
+        
+        // Workspace settings
+        "Lua.workspace.library": [
+          // Add paths to external libraries
+          // Example: "/usr/local/share/lua/5.4"
+        ],
+        "Lua.workspace.checkThirdParty": false,
+        "Lua.workspace.ignoreDir": [
+          ".git",
+          ".vscode",
+          "node_modules"
+        ],
+        
+        // Completion settings
+        "Lua.completion.enable": true,
+        "Lua.completion.callSnippet": "Both",
+        "Lua.completion.keywordSnippet": "Both",
+        "Lua.completion.displayContext": 6,
+        "Lua.completion.workspaceWord": true,
+        "Lua.completion.showWord": "Fallback",
+        
+        // Hover settings
+        "Lua.hover.enable": true,
+        "Lua.hover.viewString": true,
+        "Lua.hover.viewStringMax": 1000,
+        "Lua.hover.viewNumber": true,
+        "Lua.hover.previewFields": 50,
+        
+        // Signature help
+        "Lua.signatureHelp.enable": true,
+        
+        // Type checking
+        "Lua.type.castNumberToInteger": false,
+        "Lua.type.weakUnionCheck": false,
+        
+        // Semantic tokens
+        "Lua.semantic.enable": true,
+        "Lua.semantic.variable": true,
+        "Lua.semantic.annotation": true,
+        "Lua.semantic.keyword": false,
+        
+        // IntelliSense settings
+        "Lua.IntelliSense.traceBeSetted": false,
+        "Lua.IntelliSense.traceFieldInject": false,
+        "Lua.IntelliSense.traceLocalSet": false,
+        "Lua.IntelliSense.traceReturn": false,
+        
+        // Misc settings
+        "Lua.telemetry.enable": false,
+        "Lua.window.progressBar": true,
+        "Lua.window.statusBar": true,
+        
+        // Code format (if supported)
+        "Lua.format.enable": true,
+        "Lua.format.defaultConfig": {
+          "indent_style": "space",
+          "indent_size": "4",
+          "quote_style": "double",
+          "continuation_indent": "4"
+        }
+      }
+    }
+  },
+  
+  // Language-specific settings
+  "languages": {
+    "EmmyLua": {
+      "tab_size": 4,
+      "hard_tabs": false,
+      "soft_wrap": "none",
+      "format_on_save": "off",
+      "formatter": "language_server",
+      "code_actions_on_format": {},
+      "preferred_line_length": 120,
+      "show_inline_completions": true
+    }
+  }
+}
