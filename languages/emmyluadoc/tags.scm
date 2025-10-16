@@ -7,7 +7,7 @@
 
 ; 字段定义
 (field_annotation
-  name: (identifier) @name) @definition.field
+  name: (field_name) @name) @definition.field
 
 ; 枚举定义
 (enum_annotation
@@ -19,7 +19,7 @@
 
 ; 函数参数
 (param_annotation
-  name: (identifier) @name) @definition.parameter
+  name: (param_name) @name) @definition.parameter
 
 ; 泛型参数
 (generic_annotation

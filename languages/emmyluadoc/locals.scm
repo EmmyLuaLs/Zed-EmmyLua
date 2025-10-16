@@ -10,11 +10,11 @@
 
 ; 字段定义
 (field_annotation
-  name: (identifier) @definition.field)
+  name: (field_name) @definition.field)
 
 ; 参数定义
 (param_annotation
-  name: (identifier) @definition.parameter)
+  name: (param_name) @definition.parameter)
 
 ; 泛型定义
 (generic_annotation

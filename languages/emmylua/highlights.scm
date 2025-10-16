@@ -1,12 +1,14 @@
 ;; Keywords
 
-"return" @keyword
+"return" @keyword.return
 
 [
  "goto"
  "in"
  "local"
 ] @keyword
+
+(label_statement) @label
 
 (break_statement) @keyword
 
@@ -21,13 +23,13 @@
   "while"
   "do"
   "end"
-] @keyword)
+] @repeat)
 
 (repeat_statement
 [
   "repeat"
   "until"
-] @keyword)
+] @repeat)
 
 (if_statement
 [
@@ -36,71 +38,51 @@
   "else"
   "then"
   "end"
-] @keyword)
+] @conditional)
 
 (elseif_statement
 [
   "elseif"
   "then"
   "end"
-] @keyword)
+] @conditional)
 
 (else_statement
 [
   "else"
   "end"
-] @keyword)
+] @conditional)
 
 (for_statement
 [
   "for"
   "do"
   "end"
-] @keyword)
+] @repeat)
 
 (function_declaration
 [
   "function"
   "end"
-] @keyword)
+] @keyword.function)
 
 (function_definition
 [
   "function"
   "end"
-] @keyword)
+] @keyword.function)
 
 ;; Operators
+
+(binary_expression operator: _ @operator)
+
+(unary_expression operator: _ @operator)
 
 [
  "and"
  "not"
  "or"
-] @operator
-
-[
-  "+"
-  "-"
-  "*"
-  "/"
-  "%"
-  "^"
-  "#"
-  "=="
-  "~="
-  "<="
-  ">="
-  "<"
-  ">"
-  "="
-  "&"
-  "~"
-  "|"
-  "<<"
-  ">>"
-  "//"
-  ".."
-] @operator
+] @keyword.operator
 
 ;; Punctuations
 
@@ -126,13 +108,14 @@
 
 (identifier) @variable
 
-((identifier) @variable.special
- (#eq? @variable.special "self"))
+((identifier) @variable.builtin
+ (#eq? @variable.builtin "self"))
 
 (variable_list
-   attribute: (attribute
-     (["<" ">"] @punctuation.bracket
-      (identifier) @attribute)))
+  (attribute
+    "<" @punctuation.bracket
+    (identifier) @attribute
+    ">" @punctuation.bracket))
 
 ;; Constants
 
@@ -150,9 +133,9 @@
 
 ;; Tables
 
-(field name: (identifier) @property)
+(field name: (identifier) @field)
 
-(dot_index_expression field: (identifier) @property)
+(dot_index_expression field: (identifier) @field)
 
 (table_constructor
 [
@@ -164,19 +147,40 @@
 
 (parameters (identifier) @parameter)
 
-(function_call
+(function_declaration
   name: [
     (identifier) @function
-    (dot_index_expression field: (identifier) @function)
+    (dot_index_expression
+      field: (identifier) @function)
   ])
 
 (function_declaration
-  name: [
-    (identifier) @function.definition
-    (dot_index_expression field: (identifier) @function.definition)
-  ])
+  name: (method_index_expression
+    method: (identifier) @method))
 
-(method_index_expression method: (identifier) @function.method)
+(assignment_statement
+  (variable_list .
+    name: [
+      (identifier) @function
+      (dot_index_expression
+        field: (identifier) @function)
+    ])
+  (expression_list .
+    value: (function_definition)))
+
+(table_constructor
+  (field
+    name: (identifier) @function
+    value: (function_definition)))
+
+(function_call
+  name: [
+    (identifier) @function.call
+    (dot_index_expression
+      field: (identifier) @function.call)
+    (method_index_expression
+      method: (identifier) @method.call)
+  ])
 
 (function_call
   (identifier) @function.builtin
@@ -189,7 +193,6 @@
 
 ;; Others
 
-;; Regular comments
 (comment) @comment
 
 (hash_bang_line) @preproc
@@ -197,4 +200,5 @@
 (number) @number
 
 (string) @string
+
 (escape_sequence) @string.escape

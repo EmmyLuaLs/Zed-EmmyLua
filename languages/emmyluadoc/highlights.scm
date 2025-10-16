@@ -53,7 +53,7 @@
 ; ============================================
 
 ((identifier) @type.builtin
-  (#match? @type.builtin "^(string|number|boolean|table|function|thread|userdata|nil|any|unknown|self)$"))
+  (#match? @type.builtin "^(string|number|integer|boolean|table|function|thread|userdata|nil|any|unknown|self)$"))
 
 ; 自定义类型
 (basic_type
@@ -78,10 +78,10 @@
 ; ============================================
 
 (field_annotation
-  name: (identifier) @variable.member)
+  name: (field_name) @variable.member)
 
 (param_annotation
-  name: (identifier) @variable.parameter)
+  name: (param_name) @variable.parameter)
 
 (return_annotation
   name: (identifier)? @variable.parameter)
@@ -225,3 +225,39 @@
 
 (table_type
   "table" @type.builtin)
+
+; 表字面量类型 (Table Literal Types)
+(table_literal_type
+  "{" @punctuation.bracket
+  "}" @punctuation.bracket)
+
+(table_field
+  name: (identifier) @property
+  ":" @punctuation.delimiter
+  type: (type_list
+    (type
+      (primary_type
+        (basic_type
+          (identifier) @type)))))
+
+; 表字段中的逗号
+(table_literal_type
+  "," @punctuation.delimiter)
+
+; ============================================
+; 泛型参数 (Generic Parameters)
+; ============================================
+
+; @class 和 @alias 的泛型参数定义
+(generic_params
+  "<" @punctuation.bracket
+  ">" @punctuation.bracket)
+
+(generic_params
+  params: (identifier) @type.parameter)
+
+; ============================================
+; nil 字面量 (nil Literal)
+; ============================================
+
+"nil" @constant.builtin
