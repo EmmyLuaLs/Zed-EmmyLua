@@ -192,19 +192,6 @@
 ;; Regular comments
 (comment) @comment
 
-;; EmmyLua Doc Comments - Use @attribute for visibility
-; EmmyLua annotations like @param, @class, @return, etc.
-((comment
-  content: (comment_content) @attribute)
- (#match? @attribute "^-@(class|alias|type|enum|interface|field|param|return|generic|overload|async|nodiscard|deprecated|diagnostic|cast|meta|module|operator|see|source|version|as|public|private|protected|package)"))
-
-; EmmyLua enum values: ---| 'value' or --- | "value"
-; These are typically used after @alias to define enum options
-; Supports optional spaces between --- and |
-((comment
-  content: (comment_content) @string.special)
- (#match? @string.special "^-\\s*\\|\\s*['\"]"))
-
 (hash_bang_line) @preproc
 
 (number) @number
