@@ -83,7 +83,7 @@
 (param_annotation
   name: (param_name) @variable.parameter)
 
-(return_annotation
+(return_value
   name: (identifier)? @variable.parameter)
 
 (param_def
@@ -169,6 +169,19 @@
 ] @punctuation.bracket
 
 ; ============================================
+; 元组类型 (Tuple Types)
+; ============================================
+
+; 元组括号
+(tuple_type
+  "[" @punctuation.bracket
+  "]" @punctuation.bracket)
+
+; 元组元素中的逗号
+(tuple_elements
+  "," @punctuation.delimiter)
+
+; ============================================
 ; 引用和诊断 (References and Diagnostics)
 ; ============================================
 
@@ -231,6 +244,7 @@
   "{" @punctuation.bracket
   "}" @punctuation.bracket)
 
+; 命名字段
 (table_field
   name: (identifier) @property
   ":" @punctuation.delimiter
@@ -239,6 +253,12 @@
       (primary_type
         (basic_type
           (identifier) @type)))))
+
+; 索引字段
+(table_field
+  "[" @punctuation.bracket
+  "]" @punctuation.bracket
+  ":" @punctuation.delimiter)
 
 ; 表字段中的逗号
 (table_literal_type

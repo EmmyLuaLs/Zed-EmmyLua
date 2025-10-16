@@ -1,7 +1,7 @@
 name = "EmmyLua"
 grammar = "lua"
 path_suffixes = ["lua", "lua.txt"]
-line_comments = ["-- "]
+line_comments = ["--- ", "-- "]
 block_comment = ["--[[", "]]"]
 word_characters = ["_"]
 autoclose_before = ";:.,=}])>"
