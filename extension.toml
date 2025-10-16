@@ -15,4 +15,4 @@ repository = "https://github.com/tree-sitter-grammars/tree-sitter-lua"
 commit = "d76023017f7485eae629cb60d406c7a1ca0f40c9"
 [grammars.emmyluadoc]
 repository = "https://github.com/EmmyLuaLs/tree-sitter-emmyluadoc"
-commit = "2b8a5f080d4d093c6ea139f3b3ded565d6002bf8"
+commit = "873b9e3d63ac9a0cc933a6d643de29aacabe1756"
