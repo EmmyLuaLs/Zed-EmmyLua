@@ -2,6 +2,7 @@
 name = "emmylua"
 version = "0.15.0"
 edition = "2024"
+license = "MIT"
 
 [lib]
 path = "src/emmylua.rs"
