@@ -1,7 +1,8 @@
 use std::fs;
 use zed::lsp::CompletionKind;
 use zed::{CodeLabel, CodeLabelSpan, LanguageServerId};
-use zed_extension_api::{self as zed, Result};
+use zed_extension_api::settings::LspSettings;
+use zed_extension_api::{self as zed, Command, Result};
 
 struct EmmyLuaExtension {
     cached_binary_path: Option<String>,
@@ -13,7 +14,14 @@ impl EmmyLuaExtension {
         language_server_id: &LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<String> {
-        // First check if emmylua is in PATH
+        if let Ok(lsp_settings) = LspSettings::for_worktree("emmylua", worktree) {
+            if let Some(binary) = lsp_settings.binary {
+                if let Some(path) = binary.path {
+                    return Ok(path);
+                }
+            }
+        }
+
         if let Some(path) = worktree.which("emmylua_ls") {
             return Ok(path);
         }
@@ -33,7 +41,7 @@ impl EmmyLuaExtension {
             language_server_id,
             &zed::LanguageServerInstallationStatus::CheckingForUpdate,
         );
-        
+
         let release = zed::latest_github_release(
             "EmmyLuaLs/emmylua-analyzer-rust",
             zed::GithubReleaseOptions {
@@ -126,10 +134,24 @@ impl zed::Extension for EmmyLuaExtension {
         language_server_id: &LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<zed::Command> {
+        let mut env = worktree.shell_env();
+        let mut args = Default::default();
+
+        if let Ok(lsp_settings) = LspSettings::for_worktree("emmylua", worktree) {
+            if let Some(binary) = lsp_settings.binary {
+                if let Some(binary_arguments) = binary.arguments {
+                    args = binary_arguments;
+                }
+                if let Some(binary_env) = binary.env {
+                    env.extend(binary_env);
+                }
+            }
+        }
+
         Ok(zed::Command {
             command: self.language_server_binary_path(language_server_id, worktree)?,
-            args: Default::default(),
-            env: Default::default(),
+            args,
+            env,
         })
     }
 
@@ -139,7 +161,7 @@ impl zed::Extension for EmmyLuaExtension {
         completion: zed::lsp::Completion,
     ) -> Option<CodeLabel> {
         let name = &completion.label;
-        
+
         match completion.kind? {
             CompletionKind::Method | CompletionKind::Function => {
                 let name_len = name.find('(').unwrap_or(name.len());
@@ -166,26 +188,17 @@ impl zed::Extension for EmmyLuaExtension {
                 code: Default::default(),
             }),
             CompletionKind::Class => Some(CodeLabel {
-                spans: vec![CodeLabelSpan::literal(
-                    name.clone(),
-                    Some("type".into()),
-                )],
+                spans: vec![CodeLabelSpan::literal(name.clone(), Some("type".into()))],
                 filter_range: (0..name.len()).into(),
                 code: Default::default(),
             }),
             CompletionKind::Module => Some(CodeLabel {
-                spans: vec![CodeLabelSpan::literal(
-                    name.clone(),
-                    Some("module".into()),
-                )],
+                spans: vec![CodeLabelSpan::literal(name.clone(), Some("module".into()))],
                 filter_range: (0..name.len()).into(),
                 code: Default::default(),
             }),
             CompletionKind::Keyword => Some(CodeLabel {
-                spans: vec![CodeLabelSpan::literal(
-                    name.clone(),
-                    Some("keyword".into()),
-                )],
+                spans: vec![CodeLabelSpan::literal(name.clone(), Some("keyword".into()))],
                 filter_range: (0..name.len()).into(),
                 code: Default::default(),
             }),
@@ -199,7 +212,7 @@ impl zed::Extension for EmmyLuaExtension {
         symbol: zed::lsp::Symbol,
     ) -> Option<CodeLabel> {
         let name = &symbol.name;
-        
+
         match symbol.kind {
             zed::lsp::SymbolKind::Method | zed::lsp::SymbolKind::Function => {
                 let code = format!("function {}()", name);
@@ -210,33 +223,24 @@ impl zed::Extension for EmmyLuaExtension {
                     code,
                 })
             }
-            zed::lsp::SymbolKind::Class | zed::lsp::SymbolKind::Module => {
-                Some(CodeLabel {
-                    spans: vec![CodeLabelSpan::literal(
-                        name.clone(),
-                        Some("type".into()),
-                    )],
-                    filter_range: (0..name.len()).into(),
-                    code: name.clone(),
-                })
-            }
-            zed::lsp::SymbolKind::Variable | zed::lsp::SymbolKind::Constant => {
-                Some(CodeLabel {
-                    spans: vec![CodeLabelSpan::literal(
-                        name.clone(),
-                        Some("variable".into()),
-                    )],
-                    filter_range: (0..name.len()).into(),
-                    code: name.clone(),
-                })
-            }
-            _ => {
-                Some(CodeLabel {
-                    spans: vec![CodeLabelSpan::code_range(0..name.len())],
-                    filter_range: (0..name.len()).into(),
-                    code: name.clone(),
-                })
-            }
+            zed::lsp::SymbolKind::Class | zed::lsp::SymbolKind::Module => Some(CodeLabel {
+                spans: vec![CodeLabelSpan::literal(name.clone(), Some("type".into()))],
+                filter_range: (0..name.len()).into(),
+                code: name.clone(),
+            }),
+            zed::lsp::SymbolKind::Variable | zed::lsp::SymbolKind::Constant => Some(CodeLabel {
+                spans: vec![CodeLabelSpan::literal(
+                    name.clone(),
+                    Some("variable".into()),
+                )],
+                filter_range: (0..name.len()).into(),
+                code: name.clone(),
+            }),
+            _ => Some(CodeLabel {
+                spans: vec![CodeLabelSpan::code_range(0..name.len())],
+                filter_range: (0..name.len()).into(),
+                code: name.clone(),
+            }),
         }
     }
 
