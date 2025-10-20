@@ -1,8 +1,6 @@
 use std::fs;
-use zed::lsp::CompletionKind;
-use zed::{CodeLabel, CodeLabelSpan, LanguageServerId};
-use zed_extension_api::settings::LspSettings;
-use zed_extension_api::{self as zed, Command, Result};
+use zed::{CodeLabel, CodeLabelSpan, LanguageServerId, Result, lsp::CompletionKind};
+use zed_extension_api::{self as zed};
 
 struct EmmyLuaExtension {
     cached_binary_path: Option<String>,
@@ -14,7 +12,7 @@ impl EmmyLuaExtension {
         language_server_id: &LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<String> {
-        if let Ok(lsp_settings) = LspSettings::for_worktree("emmylua", worktree) {
+        if let Ok(lsp_settings) = zed::settings::LspSettings::for_worktree("emmylua", worktree) {
             if let Some(binary) = lsp_settings.binary {
                 if let Some(path) = binary.path {
                     return Ok(path);
@@ -137,7 +135,7 @@ impl zed::Extension for EmmyLuaExtension {
         let mut env = worktree.shell_env();
         let mut args = Default::default();
 
-        if let Ok(lsp_settings) = LspSettings::for_worktree("emmylua", worktree) {
+        if let Ok(lsp_settings) = zed::settings::LspSettings::for_worktree("emmylua", worktree) {
             if let Some(binary) = lsp_settings.binary {
                 if let Some(binary_arguments) = binary.arguments {
                     args = binary_arguments;
