@@ -1,7 +1,7 @@
 id = "emmylua"
 name = "EmmyLua"
 description = "Advanced Lua language support with EmmyLua annotations, intelligent completions, and powerful diagnostics."
-version = "0.15.0"
+version = "0.16.0"
 schema_version = 1
 authors = ["0x2CA <2478557459@qq.com>", "CppCXY"]
 repository = "https://github.com/EmmyLuaLs/Zed-EmmyLua"
