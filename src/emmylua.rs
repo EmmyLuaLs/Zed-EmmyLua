@@ -1,9 +1,11 @@
 use std::fs;
-use zed::{CodeLabel, CodeLabelSpan, LanguageServerId, Result, lsp::CompletionKind};
-use zed_extension_api::{self as zed};
+use zed::lsp::CompletionKind;
+use zed::{CodeLabel, CodeLabelSpan, LanguageServerId};
+use zed_extension_api::{self as zed, Result, serde_json::Value};
 
 struct EmmyLuaExtension {
     cached_binary_path: Option<String>,
+    cached_dap_binary_path: Option<String>,
 }
 
 impl EmmyLuaExtension {
@@ -20,6 +22,7 @@ impl EmmyLuaExtension {
             }
         }
 
+        // First check if emmylua is in PATH
         if let Some(path) = worktree.which("emmylua_ls") {
             return Ok(path);
         }
@@ -124,6 +127,7 @@ impl zed::Extension for EmmyLuaExtension {
     fn new() -> Self {
         Self {
             cached_binary_path: None,
+            cached_dap_binary_path: None,
         }
     }
 
@@ -266,6 +270,154 @@ impl zed::Extension for EmmyLuaExtension {
             .unwrap_or_default();
 
         Ok(Some(settings))
+    }
+
+    // DAP Support for EmmyLua debugger
+    fn get_dap_binary(
+        &mut self,
+        adapter_name: String,
+        _config: zed::DebugTaskDefinition,
+        user_provided_debug_adapter_path: Option<String>,
+        worktree: &zed::Worktree,
+    ) -> std::result::Result<zed::DebugAdapterBinary, String> {
+        if adapter_name != "emmylua_new" {
+            return Err(format!("Unknown debug adapter: {}", adapter_name));
+        }
+
+        let default_request_args = zed::StartDebuggingRequestArguments {
+            configuration: Default::default(),
+            request: zed::StartDebuggingRequestArgumentsRequest::Launch,
+        };
+
+        // Check if user provided a custom path
+        if let Some(path) = user_provided_debug_adapter_path {
+            self.cached_dap_binary_path = Some(path.clone());
+            return Ok(zed::DebugAdapterBinary {
+                command: Some(path),
+                arguments: vec![],
+                envs: vec![],
+                cwd: None,
+                connection: None,
+                request_args: default_request_args,
+            });
+        }
+
+        // Try to find emmylua_dap in PATH
+        if let Some(path) = worktree.which("emmylua_dap") {
+            return Ok(zed::DebugAdapterBinary {
+                command: Some(path),
+                arguments: vec![],
+                envs: vec![],
+                cwd: None,
+                connection: None,
+                request_args: default_request_args,
+            });
+        }
+
+        // Check cached path
+        if let Some(path) = &self.cached_dap_binary_path {
+            if fs::metadata(path).map_or(false, |stat| stat.is_file()) {
+                return Ok(zed::DebugAdapterBinary {
+                    command: Some(path.clone()),
+                    arguments: vec![],
+                    envs: vec![],
+                    cwd: None,
+                    connection: None,
+                    request_args: default_request_args,
+                });
+            }
+        }
+
+        // Try to download from GitHub releases
+        let release = zed::latest_github_release(
+            "EmmyLuaLs/emmylua_dap",
+            zed::GithubReleaseOptions {
+                require_assets: true,
+                pre_release: false,
+            },
+        )
+        .map_err(|e| format!("Failed to get latest release: {}", e))?;
+
+        let (platform, arch) = zed::current_platform();
+        let asset_name = format!(
+            "emmylua_dap-{os}-{arch}{glibc}.{extension}",
+            os = match platform {
+                zed::Os::Mac => "darwin",
+                zed::Os::Linux => "linux",
+                zed::Os::Windows => "win32",
+            },
+            arch = match arch {
+                zed::Architecture::Aarch64 => match platform {
+                    zed::Os::Linux => "aarch64",
+                    zed::Os::Windows | zed::Os::Mac => "arm64",
+                },
+                zed::Architecture::X8664 => "x64",
+                zed::Architecture::X86 => return Err("unsupported platform x86".into()),
+            },
+            glibc = match platform {
+                zed::Os::Linux => "-glibc.2.17",
+                zed::Os::Windows | zed::Os::Mac => "",
+            },
+            extension = match platform {
+                zed::Os::Mac | zed::Os::Linux => "tar.gz",
+                zed::Os::Windows => "zip",
+            },
+        );
+
+        let asset = release
+            .assets
+            .iter()
+            .find(|asset| asset.name.contains(&asset_name))
+            .ok_or_else(|| format!("No asset found matching pattern: {}", asset_name))?;
+
+        let version_dir = format!("emmylua_dap-{}", release.version);
+        let binary_name = format!(
+            "emmylua_dap{}",
+            match platform {
+                zed::Os::Mac | zed::Os::Linux => "",
+                zed::Os::Windows => ".exe",
+            }
+        );
+        let binary_path = format!("{}/{}", version_dir, binary_name);
+
+        if !fs::metadata(&binary_path).map_or(false, |stat| stat.is_file()) {
+            zed::download_file(
+                &asset.download_url,
+                &version_dir,
+                match platform {
+                    zed::Os::Mac | zed::Os::Linux => zed::DownloadedFileType::GzipTar,
+                    zed::Os::Windows => zed::DownloadedFileType::Zip,
+                },
+            )
+            .map_err(|e| format!("Failed to download DAP binary: {}", e))?;
+        }
+
+        self.cached_dap_binary_path = Some(binary_path.clone());
+        Ok(zed::DebugAdapterBinary {
+            command: Some(binary_path),
+            arguments: vec!["--log-level".to_string(), "debug".to_string()],
+            envs: vec![],
+            cwd: None,
+            connection: None,
+            request_args: default_request_args,
+        })
+    }
+
+    fn dap_request_kind(
+        &mut self,
+        _adapter_name: String,
+        config: Value,
+    ) -> std::result::Result<zed::StartDebuggingRequestArgumentsRequest, String> {
+        let request_type = config
+            .get("request")
+            .and_then(|v| v.as_str())
+            .unwrap_or("launch");
+
+        match request_type {
+            "launch" => Ok(zed::StartDebuggingRequestArgumentsRequest::Launch),
+            "attach" => Ok(zed::StartDebuggingRequestArgumentsRequest::Attach),
+            _ => Err(format!("Unknown request type: {}", request_type)),
+        }
     }
 }
 

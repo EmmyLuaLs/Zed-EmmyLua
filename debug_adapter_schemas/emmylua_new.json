@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EmmyLua Debug Adapter Configuration",
+  "description": "Configuration schema for EmmyLua debug adapter (emmylua_dap)",
+  "type": "object",
+  "required": ["type"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["emmylua_new"],
+      "description": "Debug adapter type"
+    },
+    "request": {
+      "type": "string",
+      "enum": ["launch", "attach"],
+      "description": "Request type for this debug configuration",
+      "default": "launch"
+    },
+    "name": {
+      "type": "string",
+      "description": "Name of the debug configuration",
+      "default": "EmmyLua Debug"
+    },
+    "host": {
+      "type": "string",
+      "description": "Debug server host address",
+      "default": "localhost"
+    },
+    "port": {
+      "type": "number",
+      "description": "Debug server port number",
+      "default": 9966
+    },
+    "sourcePaths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Source code directories to search for files",
+      "default": ["${workspaceFolder}"]
+    },
+    "ext": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Supported Lua file extensions",
+      "default": [".lua", ".lua.txt", ".lua.bytes"]
+    },
+    "ideConnectDebugger": {
+      "type": "boolean",
+      "description": "Whether the IDE should initiate the connection to the debugger",
+      "default": true
+    },
+    "stopOnEntry": {
+      "type": "boolean",
+      "description": "Automatically stop after connecting",
+      "default": false
+    }
+  }
+}
