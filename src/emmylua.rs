@@ -395,7 +395,7 @@ impl zed::Extension for EmmyLuaExtension {
         self.cached_dap_binary_path = Some(binary_path.clone());
         Ok(zed::DebugAdapterBinary {
             command: Some(binary_path),
-            arguments: vec!["--log-level".to_string(), "debug".to_string()],
+            arguments: vec![],
             envs: vec![],
             cwd: None,
             connection: None,
