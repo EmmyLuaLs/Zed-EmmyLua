@@ -1,4 +1,6 @@
-use std::fs;
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::{env, fs};
 use zed::lsp::CompletionKind;
 use zed::{CodeLabel, CodeLabelSpan, LanguageServerId};
 use zed_extension_api::{self as zed, Result, serde_json::Value};
@@ -17,7 +19,9 @@ impl EmmyLuaExtension {
         if let Ok(lsp_settings) = zed::settings::LspSettings::for_worktree("emmylua", worktree) {
             if let Some(binary) = lsp_settings.binary {
                 if let Some(path) = binary.path {
-                    return Ok(path);
+                    if !fs::metadata(&path).map_or(false, |stat| stat.is_file()) {
+                        return Ok(path);
+                    }
                 }
             }
         }
@@ -112,8 +116,12 @@ impl EmmyLuaExtension {
                 fs::read_dir(".").map_err(|e| format!("failed to list working directory {e}"))?;
             for entry in entries {
                 let entry = entry.map_err(|e| format!("failed to load directory entry {e}"))?;
-                if entry.file_name().to_str() != Some(&version_dir) {
-                    fs::remove_dir_all(entry.path()).ok();
+                if let Some(file_name) = entry.file_name().to_str() {
+                    if file_name.starts_with("emmylua-") {
+                        if entry.file_name().to_str() != Some(&version_dir) {
+                            fs::remove_dir_all(entry.path()).ok();
+                        }
+                    }
                 }
             }
         }
@@ -276,7 +284,7 @@ impl zed::Extension for EmmyLuaExtension {
     fn get_dap_binary(
         &mut self,
         adapter_name: String,
-        _config: zed::DebugTaskDefinition,
+        config: zed::DebugTaskDefinition,
         user_provided_debug_adapter_path: Option<String>,
         worktree: &zed::Worktree,
     ) -> std::result::Result<zed::DebugAdapterBinary, String> {
@@ -285,21 +293,29 @@ impl zed::Extension for EmmyLuaExtension {
         }
 
         let default_request_args = zed::StartDebuggingRequestArguments {
-            configuration: Default::default(),
-            request: zed::StartDebuggingRequestArgumentsRequest::Launch,
+            configuration: config.config.clone(),
+            request: self.dap_request_kind(
+                adapter_name,
+                Value::from_str(config.config.as_str())
+                    .map_err(|e| format!("Invalid JSON configuration: {e}"))?,
+            )?,
         };
+
+        let cwd = Some(worktree.root_path());
 
         // Check if user provided a custom path
         if let Some(path) = user_provided_debug_adapter_path {
-            self.cached_dap_binary_path = Some(path.clone());
-            return Ok(zed::DebugAdapterBinary {
-                command: Some(path),
-                arguments: vec![],
-                envs: vec![],
-                cwd: None,
-                connection: None,
-                request_args: default_request_args,
-            });
+            if !fs::metadata(&path).map_or(false, |stat| stat.is_file()) {
+                self.cached_dap_binary_path = Some(path.clone());
+                return Ok(zed::DebugAdapterBinary {
+                    command: Some(path),
+                    arguments: vec![],
+                    envs: vec![],
+                    cwd,
+                    connection: None,
+                    request_args: default_request_args,
+                });
+            }
         }
 
         // Try to find emmylua_dap in PATH
@@ -308,7 +324,7 @@ impl zed::Extension for EmmyLuaExtension {
                 command: Some(path),
                 arguments: vec![],
                 envs: vec![],
-                cwd: None,
+                cwd,
                 connection: None,
                 request_args: default_request_args,
             });
@@ -321,7 +337,7 @@ impl zed::Extension for EmmyLuaExtension {
                     command: Some(path.clone()),
                     arguments: vec![],
                     envs: vec![],
-                    cwd: None,
+                    cwd,
                     connection: None,
                     request_args: default_request_args,
                 });
@@ -390,14 +406,35 @@ impl zed::Extension for EmmyLuaExtension {
                 },
             )
             .map_err(|e| format!("Failed to download DAP binary: {}", e))?;
+
+            let entries =
+                fs::read_dir(".").map_err(|e| format!("failed to list working directory {e}"))?;
+            for entry in entries {
+                let entry = entry.map_err(|e| format!("failed to load directory entry {e}"))?;
+                if let Some(file_name) = entry.file_name().to_str() {
+                    if file_name.starts_with("emmylua_dap-") {
+                        if entry.file_name().to_str() != Some(&version_dir) {
+                            fs::remove_dir_all(entry.path()).ok();
+                        }
+                    }
+                }
+            }
         }
 
-        self.cached_dap_binary_path = Some(binary_path.clone());
+        let path = match env::current_dir() {
+            Ok(current_dir) => current_dir.join(binary_path).to_string_lossy().to_string(),
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                PathBuf::from(binary_path).to_string_lossy().to_string()
+            }
+        };
+
+        self.cached_dap_binary_path = Some(path.clone());
         Ok(zed::DebugAdapterBinary {
-            command: Some(binary_path),
+            command: Some(path),
             arguments: vec![],
             envs: vec![],
-            cwd: None,
+            cwd,
             connection: None,
             request_args: default_request_args,
         })
@@ -405,9 +442,13 @@ impl zed::Extension for EmmyLuaExtension {
 
     fn dap_request_kind(
         &mut self,
-        _adapter_name: String,
+        adapter_name: String,
         config: Value,
     ) -> std::result::Result<zed::StartDebuggingRequestArgumentsRequest, String> {
+        if adapter_name != "emmylua_new" {
+            return Err(format!("Unknown debug adapter: {}", adapter_name));
+        }
+
         let request_type = config
             .get("request")
             .and_then(|v| v.as_str())
