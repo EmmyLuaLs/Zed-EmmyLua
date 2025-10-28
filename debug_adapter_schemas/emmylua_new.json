@@ -37,7 +37,7 @@
         "type": "string"
       },
       "description": "Source code directories to search for files",
-      "default": ["${workspaceFolder}"]
+      "default": ["$ZED_WORKTREE_ROOT" ]
     },
     "ext": {
       "type": "array",
