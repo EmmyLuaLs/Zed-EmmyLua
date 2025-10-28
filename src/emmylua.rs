@@ -1,9 +1,13 @@
-use std::fs;
-use zed::{CodeLabel, CodeLabelSpan, LanguageServerId, Result, lsp::CompletionKind};
-use zed_extension_api::{self as zed};
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::{env, fs};
+use zed::lsp::CompletionKind;
+use zed::{CodeLabel, CodeLabelSpan, LanguageServerId};
+use zed_extension_api::{self as zed, Result, serde_json::Value};
 
 struct EmmyLuaExtension {
     cached_binary_path: Option<String>,
+    cached_dap_binary_path: Option<String>,
 }
 
 impl EmmyLuaExtension {
@@ -15,11 +19,14 @@ impl EmmyLuaExtension {
         if let Ok(lsp_settings) = zed::settings::LspSettings::for_worktree("emmylua", worktree) {
             if let Some(binary) = lsp_settings.binary {
                 if let Some(path) = binary.path {
-                    return Ok(path);
+                    if !fs::metadata(&path).map_or(false, |stat| stat.is_file()) {
+                        return Ok(path);
+                    }
                 }
             }
         }
 
+        // First check if emmylua is in PATH
         if let Some(path) = worktree.which("emmylua_ls") {
             return Ok(path);
         }
@@ -109,8 +116,12 @@ impl EmmyLuaExtension {
                 fs::read_dir(".").map_err(|e| format!("failed to list working directory {e}"))?;
             for entry in entries {
                 let entry = entry.map_err(|e| format!("failed to load directory entry {e}"))?;
-                if entry.file_name().to_str() != Some(&version_dir) {
-                    fs::remove_dir_all(entry.path()).ok();
+                if let Some(file_name) = entry.file_name().to_str() {
+                    if file_name.starts_with("emmylua-") {
+                        if entry.file_name().to_str() != Some(&version_dir) {
+                            fs::remove_dir_all(entry.path()).ok();
+                        }
+                    }
                 }
             }
         }
@@ -124,6 +135,7 @@ impl zed::Extension for EmmyLuaExtension {
     fn new() -> Self {
         Self {
             cached_binary_path: None,
+            cached_dap_binary_path: None,
         }
     }
 
@@ -266,6 +278,187 @@ impl zed::Extension for EmmyLuaExtension {
             .unwrap_or_default();
 
         Ok(Some(settings))
+    }
+
+    // DAP Support for EmmyLua debugger
+    fn get_dap_binary(
+        &mut self,
+        adapter_name: String,
+        config: zed::DebugTaskDefinition,
+        user_provided_debug_adapter_path: Option<String>,
+        worktree: &zed::Worktree,
+    ) -> std::result::Result<zed::DebugAdapterBinary, String> {
+        if adapter_name != "emmylua_new" {
+            return Err(format!("Unknown debug adapter: {}", adapter_name));
+        }
+
+        let default_request_args = zed::StartDebuggingRequestArguments {
+            configuration: config.config.clone(),
+            request: self.dap_request_kind(
+                adapter_name,
+                Value::from_str(config.config.as_str())
+                    .map_err(|e| format!("Invalid JSON configuration: {e}"))?,
+            )?,
+        };
+
+        let cwd = Some(worktree.root_path());
+
+        // Check if user provided a custom path
+        if let Some(path) = user_provided_debug_adapter_path {
+            if !fs::metadata(&path).map_or(false, |stat| stat.is_file()) {
+                self.cached_dap_binary_path = Some(path.clone());
+                return Ok(zed::DebugAdapterBinary {
+                    command: Some(path),
+                    arguments: vec![],
+                    envs: vec![],
+                    cwd,
+                    connection: None,
+                    request_args: default_request_args,
+                });
+            }
+        }
+
+        // Try to find emmylua_dap in PATH
+        if let Some(path) = worktree.which("emmylua_dap") {
+            return Ok(zed::DebugAdapterBinary {
+                command: Some(path),
+                arguments: vec![],
+                envs: vec![],
+                cwd,
+                connection: None,
+                request_args: default_request_args,
+            });
+        }
+
+        // Check cached path
+        if let Some(path) = &self.cached_dap_binary_path {
+            if fs::metadata(path).map_or(false, |stat| stat.is_file()) {
+                return Ok(zed::DebugAdapterBinary {
+                    command: Some(path.clone()),
+                    arguments: vec![],
+                    envs: vec![],
+                    cwd,
+                    connection: None,
+                    request_args: default_request_args,
+                });
+            }
+        }
+
+        // Try to download from GitHub releases
+        let release = zed::latest_github_release(
+            "EmmyLuaLs/emmylua_dap",
+            zed::GithubReleaseOptions {
+                require_assets: true,
+                pre_release: false,
+            },
+        )
+        .map_err(|e| format!("Failed to get latest release: {}", e))?;
+
+        let (platform, arch) = zed::current_platform();
+        let asset_name = format!(
+            "emmylua_dap-{os}-{arch}{glibc}.{extension}",
+            os = match platform {
+                zed::Os::Mac => "darwin",
+                zed::Os::Linux => "linux",
+                zed::Os::Windows => "win32",
+            },
+            arch = match arch {
+                zed::Architecture::Aarch64 => match platform {
+                    zed::Os::Linux => "aarch64",
+                    zed::Os::Windows | zed::Os::Mac => "arm64",
+                },
+                zed::Architecture::X8664 => "x64",
+                zed::Architecture::X86 => return Err("unsupported platform x86".into()),
+            },
+            glibc = match platform {
+                zed::Os::Linux => "-glibc.2.17",
+                zed::Os::Windows | zed::Os::Mac => "",
+            },
+            extension = match platform {
+                zed::Os::Mac | zed::Os::Linux => "tar.gz",
+                zed::Os::Windows => "zip",
+            },
+        );
+
+        let asset = release
+            .assets
+            .iter()
+            .find(|asset| asset.name.contains(&asset_name))
+            .ok_or_else(|| format!("No asset found matching pattern: {}", asset_name))?;
+
+        let version_dir = format!("emmylua_dap-{}", release.version);
+        let binary_name = format!(
+            "emmylua_dap{}",
+            match platform {
+                zed::Os::Mac | zed::Os::Linux => "",
+                zed::Os::Windows => ".exe",
+            }
+        );
+        let binary_path = format!("{}/{}", version_dir, binary_name);
+
+        if !fs::metadata(&binary_path).map_or(false, |stat| stat.is_file()) {
+            zed::download_file(
+                &asset.download_url,
+                &version_dir,
+                match platform {
+                    zed::Os::Mac | zed::Os::Linux => zed::DownloadedFileType::GzipTar,
+                    zed::Os::Windows => zed::DownloadedFileType::Zip,
+                },
+            )
+            .map_err(|e| format!("Failed to download DAP binary: {}", e))?;
+
+            let entries =
+                fs::read_dir(".").map_err(|e| format!("failed to list working directory {e}"))?;
+            for entry in entries {
+                let entry = entry.map_err(|e| format!("failed to load directory entry {e}"))?;
+                if let Some(file_name) = entry.file_name().to_str() {
+                    if file_name.starts_with("emmylua_dap-") {
+                        if entry.file_name().to_str() != Some(&version_dir) {
+                            fs::remove_dir_all(entry.path()).ok();
+                        }
+                    }
+                }
+            }
+        }
+
+        let path = match env::current_dir() {
+            Ok(current_dir) => current_dir.join(binary_path).to_string_lossy().to_string(),
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                PathBuf::from(binary_path).to_string_lossy().to_string()
+            }
+        };
+
+        self.cached_dap_binary_path = Some(path.clone());
+        Ok(zed::DebugAdapterBinary {
+            command: Some(path),
+            arguments: vec![],
+            envs: vec![],
+            cwd,
+            connection: None,
+            request_args: default_request_args,
+        })
+    }
+
+    fn dap_request_kind(
+        &mut self,
+        adapter_name: String,
+        config: Value,
+    ) -> std::result::Result<zed::StartDebuggingRequestArgumentsRequest, String> {
+        if adapter_name != "emmylua_new" {
+            return Err(format!("Unknown debug adapter: {}", adapter_name));
+        }
+
+        let request_type = config
+            .get("request")
+            .and_then(|v| v.as_str())
+            .unwrap_or("launch");
+
+        match request_type {
+            "launch" => Ok(zed::StartDebuggingRequestArgumentsRequest::Launch),
+            "attach" => Ok(zed::StartDebuggingRequestArgumentsRequest::Attach),
+            _ => Err(format!("Unknown request type: {}", request_type)),
+        }
     }
 }
 
