@@ -42,6 +42,9 @@
 - **Text Objects**: Navigate and select Lua-specific code structures (functions, loops, conditionals, tables)
 - **Symbol Search**: Quick navigation to any symbol in your workspace
 
+### Debugging Support
+- **Debug Adapter Protocol**: Integration with [emmylua_dap](https://github.com/EmmyLuaLs/emmylua_dap)
+
 ### 🛠️ Development Tools
 - **Task Runner**: Pre-configured tasks for running Lua scripts
 - **Code Actions**: Quick fixes and refactoring suggestions
