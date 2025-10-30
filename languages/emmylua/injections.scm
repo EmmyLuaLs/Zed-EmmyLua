@@ -3,9 +3,8 @@
 ;; EmmyLua Doc comments injection
 ;; Inject --- comments as emmyluadoc language
 ;; The emmyluadoc grammar now supports --- prefix, so we can directly inject
-((comment
-  (comment_content) @injection.content)
- (#match? @injection.content "^-")
+((comment) @injection.content
+ (#match? @injection.content "^---")
  (#set! injection.language "emmyluadoc"))
 
 ;; LuaJIT FFI C code injection

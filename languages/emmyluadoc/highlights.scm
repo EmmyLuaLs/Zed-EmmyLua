@@ -1,24 +1,16 @@
 ; Highlights query for EmmyLuaDoc
-; 用于语法高亮的查询文件
 
-; ============================================
-; Lua 注释前缀 (Comment Prefix)
-; ============================================
-
+; Comment Prefix
 (comment_prefix) @comment
 
-; ============================================
-; 注解关键字 (Annotation Keywords)
-; ============================================
-
-; 使用匿名节点匹配注解标记
+; Annotation Keywords
 "@class" @keyword
+"@interface" @keyword
 "@field" @keyword
 "@type" @keyword
 "@param" @keyword
 "@return" @keyword
 "@generic" @keyword
-"@vararg" @keyword
 "@overload" @keyword
 "@see" @keyword
 "@alias" @keyword
@@ -28,8 +20,13 @@
 "@version" @keyword
 "@diagnostic" @keyword
 "@operator" @keyword
+"@namespace" @keyword
+"@using" @keyword
+"@language" @keyword
+"@attribute" @keyword
+"@as" @keyword
 
-; 特殊注解节点（这些没有 @ 前缀的文本节点）
+; Special annotation nodes
 (deprecated_annotation) @keyword
 (private_annotation) @keyword
 (protected_annotation) @keyword
@@ -38,81 +35,10 @@
 (async_annotation) @keyword
 (nodiscard_annotation) @keyword
 (meta_annotation) @keyword
+(readonly_annotation) @keyword
+(export_annotation) @keyword
 
-; ============================================
-; 类型关键字 (Type Keywords)
-; ============================================
-
-[
-  "fun"
-  "table"
-] @keyword.type
-
-; ============================================
-; 基础类型 (Basic Types)
-; ============================================
-
-((identifier) @type.builtin
-  (#match? @type.builtin "^(string|number|integer|boolean|table|function|thread|userdata|nil|any|unknown|self)$"))
-
-; 自定义类型
-(basic_type
-  (identifier) @type)
-
-; ============================================
-; 类定义 (Class Definitions)
-; ============================================
-
-(class_annotation
-  name: (identifier) @type.definition)
-
-(class_annotation
-  parent: (type_list
-    (type
-      (primary_type
-        (basic_type
-          (identifier) @type)))))
-
-; ============================================
-; 字段和参数 (Fields and Parameters)
-; ============================================
-
-(field_annotation
-  name: (field_name) @variable.member)
-
-(param_annotation
-  name: (param_name) @variable.parameter)
-
-(return_value
-  name: (identifier)? @variable.parameter)
-
-(param_def
-  name: (identifier) @variable.parameter)
-
-; ============================================
-; 泛型 (Generics)
-; ============================================
-
-(generic_annotation
-  name: (identifier) @type.parameter)
-
-(generic_type
-  base: (identifier) @type)
-
-; ============================================
-; 别名和枚举 (Aliases and Enums)
-; ============================================
-
-(alias_annotation
-  name: (identifier) @type.definition)
-
-(enum_annotation
-  name: (identifier) @type.definition)
-
-; ============================================
-; 可见性修饰符 (Visibility Modifiers)
-; ============================================
-
+; Visibility modifiers
 [
   "public"
   "private"
@@ -120,10 +46,82 @@
   "package"
 ] @keyword.modifier
 
-; ============================================
-; 操作符 (Operators)
-; ============================================
+; Type keywords
+[
+  "fun"
+  "async"
+  "table"
+  "keyof"
+  "typeof"
+  "extends"
+  "in"
+  "and"
+  "or"
+] @keyword.type
 
+; Identifiers
+(identifier) @variable
+
+; Types
+(basic_type
+  (identifier) @type)
+
+; Built-in types
+((identifier) @type.builtin
+  (#match? @type.builtin "^(string|number|integer|boolean|table|function|thread|userdata|nil|any|unknown|self)$"))
+
+; Class definitions
+(class_annotation
+  name: (identifier) @type.definition)
+
+; Class parent types
+(class_annotation
+  parent: (type_list
+    (type
+      (primary_type
+        (basic_type
+          (identifier) @type)))))
+
+; Class modifiers
+(class_annotation
+  [
+    "exact"
+    "partial"
+    "constructor"
+  ] @keyword.modifier)
+
+; Fields and Parameters
+(field_annotation
+  name: (field_name) @variable.member)
+
+(param_annotation
+  name: (param_name) @variable.parameter)
+
+(param_def
+  name: (identifier) @variable.parameter)
+
+; Generics
+(generic_annotation
+  name: (identifier) @type.parameter)
+
+(generic_type
+  base: (identifier) @type)
+
+(generic_params
+  params: (identifier) @type.parameter)
+
+; Aliases and Enums
+(alias_annotation
+  name: (identifier) @type.definition)
+
+(enum_annotation
+  name: (identifier) @type.definition)
+
+; Enum modifiers
+(enum_annotation
+  "key" @keyword.modifier)
+
+; Operators
 [
   "call"
   "add" "sub" "mul" "div" "mod" "pow"
@@ -132,32 +130,34 @@
   "eq" "lt" "le"
   "unm"
   "bnot" "band" "bor" "bxor" "shl" "shr"
+  "index"
 ] @operator
 
-; ============================================
-; 字面量 (Literals)
-; ============================================
-
+; Literals
 (string) @string
-
 (number) @number
-
 (boolean) @boolean
+"nil" @constant.builtin
 
-; ============================================
-; 标点符号 (Punctuation)
-; ============================================
+; Template types
+(template_chars) @string
 
+; Text line (documentation text)
+(text_line) @comment
+
+; Description
+(description) @comment
+
+; Continuation description
+(continuation_description) @comment
+
+; Punctuation
 [
   ":"
   "|"
   ","
   "?"
 ] @punctuation.delimiter
-
-; 类型续行中的 |
-(type_continuation
-  "|" @punctuation.delimiter)
 
 [
   "("
@@ -166,28 +166,23 @@
   "]"
   "<"
   ">"
+  "{"
+  "}"
 ] @punctuation.bracket
 
-; ============================================
-; 元组类型 (Tuple Types)
-; ============================================
+; Function type
+(function_type
+  "fun" @keyword.function)
 
-; 元组括号
-(tuple_type
-  "[" @punctuation.bracket
-  "]" @punctuation.bracket)
+; Table type
+(table_type
+  "table" @type.builtin)
 
-; 元组元素中的逗号
-(tuple_elements
-  "," @punctuation.delimiter)
+; Table fields
+(table_field
+  name: (identifier) @property)
 
-; ============================================
-; 引用和诊断 (References and Diagnostics)
-; ============================================
-
-(see_annotation
-  reference: (identifier) @variable)
-
+; Diagnostic actions
 (diagnostic_annotation
   action: [
     "disable"
@@ -199,85 +194,40 @@
 (diagnostic_list
   (identifier) @constant)
 
-; ============================================
-; 模块名 (Module Names)
-; ============================================
+; Attributes
+(attribute_use_item
+  name: (identifier) @function.macro)
 
+(attribute_annotation
+  name: (identifier) @function.macro)
+
+; Module names
 (module_annotation
   name: (string) @module)
 
-; ============================================
-; 版本 (Version)
-; ============================================
-
+; Version
 (version_annotation
   version: [
     (identifier) @constant
     (string) @string
+    (version_range) @constant
   ])
 
-; ============================================
-; 数组类型标记 (Array Type Markers)
-; ============================================
+; See references
+(see_annotation
+  reference: (identifier) @variable)
 
-(array_type
-  "[" @punctuation.bracket
-  "]" @punctuation.bracket)
+; Namespace
+(namespace_annotation
+  name: (identifier) @namespace)
 
-; ============================================
-; 函数类型 (Function Types)
-; ============================================
+; Using
+(using_annotation
+  path: [
+    (identifier) @namespace
+    (string) @string
+  ])
 
-(function_type
-  "fun" @keyword.function
-  ":" @punctuation.delimiter)
-
-; ============================================
-; 表类型 (Table Types)
-; ============================================
-
-(table_type
-  "table" @type.builtin)
-
-; 表字面量类型 (Table Literal Types)
-(table_literal_type
-  "{" @punctuation.bracket
-  "}" @punctuation.bracket)
-
-; 命名字段
-(table_field
-  name: (identifier) @property
-  ":" @punctuation.delimiter
-  type: (type_list
-    (type
-      (primary_type
-        (basic_type
-          (identifier) @type)))))
-
-; 索引字段
-(table_field
-  "[" @punctuation.bracket
-  "]" @punctuation.bracket
-  ":" @punctuation.delimiter)
-
-; 表字段中的逗号
-(table_literal_type
-  "," @punctuation.delimiter)
-
-; ============================================
-; 泛型参数 (Generic Parameters)
-; ============================================
-
-; @class 和 @alias 的泛型参数定义
-(generic_params
-  "<" @punctuation.bracket
-  ">" @punctuation.bracket)
-
-(generic_params
-  params: (identifier) @type.parameter)
-
-; ============================================
-; nil 字面量 (nil Literal)
-; ============================================
-
-"nil" @constant.builtin
+; Language
+(language_annotation
+  language: (identifier) @constant)
