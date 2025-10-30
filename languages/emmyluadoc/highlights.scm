@@ -26,6 +26,9 @@
 "@attribute" @keyword
 "@as" @keyword
 
+; Other/unknown annotations
+(tag_name) @keyword
+
 ; Special annotation nodes
 (deprecated_annotation) @keyword
 (private_annotation) @keyword
@@ -147,6 +150,10 @@
 
 ; Description
 (description) @comment
+
+; Other annotation description (highlight differently for visibility)
+(other_annotation
+  description: (description) @string.documentation)
 
 ; Continuation description
 (continuation_description) @comment
