@@ -7,7 +7,6 @@
 ;; EmmyLua Doc comments injection
 ;; Inject --- comments as emmyluadoc language
 ;; The emmyluadoc grammar now supports --- prefix, so we can directly inject
-
 (((comment) @_emmyluadoc_comment
   (#match? @_emmyluadoc_comment "^---")) @injection.content
   (#set! injection.language "emmyluadoc"))
