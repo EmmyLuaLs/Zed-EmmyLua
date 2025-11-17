@@ -1,7 +1,8 @@
 ;; Injections for Lua code
 
-((comment) @injection.content
- (#set! injection.language "comment")
+;; Comment
+((comment_content) @injection.content
+  (#set! injection.language "comment")
 )
 
 ;; EmmyLua Doc comments injection
