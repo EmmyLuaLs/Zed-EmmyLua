@@ -1,0 +1,44 @@
+name: Dump
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (e.g., 1.2.3)"
+        type: string
+        required: true
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          fetch-depth: 0
+
+      - name: Update Version
+        run: |
+          sed -i 's/^version = \".*\"/version = \"${{ github.event.inputs.version }}\"/' Cargo.toml
+          sed -i 's/^version = \".*\"/version = \"${{ github.event.inputs.version }}\"/' extension.toml
+
+      - name: Add And Commit
+        uses: EndBug/add-and-commit@v9
+        with:
+          committer_name: GitHub Actions
+          committer_email: actions@github.com
+          add: '["Cargo.toml", "extension.toml"]'
+          message: "Dump Version to v${{ github.event.inputs.version }}"
+          tag: v${{ github.event.inputs.version }}
+
+      - name: Create Release Assets
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          release_name: v${{ github.event.inputs.version }}
+          draft: false
+          prerelease: false
