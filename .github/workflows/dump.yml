@@ -46,7 +46,7 @@ jobs:
           prerelease: false
 
       - name: Release Zed Extension
-        uses: huacnlee/zed-extension-action@v1
+        uses: huacnlee/zed-extension-action@v2
         with:
           extension-name: emmylua
           # extension-path: extensions/${{ extension-name }}
