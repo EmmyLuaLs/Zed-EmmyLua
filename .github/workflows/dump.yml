@@ -44,3 +44,14 @@ jobs:
           release_name: v${{ github.event.inputs.version }}
           draft: false
           prerelease: false
+
+      - name: Release Zed Extension
+        uses: huacnlee/zed-extension-action@v1
+        with:
+          extension-name: emmylua
+          # extension-path: extensions/${{ extension-name }}
+          push-to: EmmyLuaLs/zed-extensions
+          tag: v${{ github.event.inputs.version }}
+        env:
+          # the personal access token should have "repo" & "workflow" scopes
+          COMMITTER_TOKEN: ${{ secrets.RELEASE }}
