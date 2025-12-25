@@ -16,6 +16,7 @@
   "then"
   "until"
   "while"
+  "global"
   (break_statement)
 ] @keyword
 
@@ -78,10 +79,12 @@
 ((identifier) @variable.special
  (#eq? @variable.special "self"))
 
-(variable_list
-   attribute: (attribute
-     (["<" ">"] @punctuation.bracket
-      (identifier) @attribute)))
+;; Attributes in variable declarations
+(attribute
+  "<" @punctuation.bracket
+  (identifier) @attribute
+  ">" @punctuation.bracket)
+
 
 ;; Constants
 

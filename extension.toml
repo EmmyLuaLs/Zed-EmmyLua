@@ -1,7 +1,7 @@
 id = "emmylua"
 name = "EmmyLua"
 description = "Advanced Lua language support with EmmyLua annotations, intelligent completions, powerful diagnostics and Debug Adapter Protocol support."
-version = "0.20.2"
+version = "0.21.0"
 schema_version = 1
 authors = ["0x2CA <2478557459@qq.com>", "CppCXY"]
 repository = "https://github.com/EmmyLuaLs/Zed-EmmyLua"
@@ -18,8 +18,8 @@ schema_path = "debug_adapter_schemas/emmylua_new.json"
 # Lua debug locator for converting run tasks to debug scenarios
 
 [grammars.lua]
-repository = "https://github.com/tree-sitter-grammars/tree-sitter-lua"
-commit = "d76023017f7485eae629cb60d406c7a1ca0f40c9"
+repository = "https://github.com/EmmyLuaLs/tree-sitter-lua"
+commit = "dc39814f6ad5413cd52a9a4199395418601fbb6e"
 [grammars.emmyluadoc]
 repository = "https://github.com/EmmyLuaLs/tree-sitter-emmyluadoc"
 commit = "ea755c0fd34c07e16597bd62a404d6eba2a3891e"
